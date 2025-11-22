@@ -1,0 +1,132 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - prod
+    paths:
+      - "backend/package.json"
+      - "frontend/package.json"
+      - "backend/**"
+      - "frontend/**"
+  workflow_dispatch:
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-version: ${{ steps.backend.outputs.version }}
+      frontend-version: ${{ steps.frontend.outputs.version }}
+      backend-changed: ${{ steps.backend.outputs.changed }}
+      frontend-changed: ${{ steps.frontend.outputs.changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get backend version
+        id: backend
+        run: |
+          VERSION=$(node -p "require('./backend/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if backend files changed
+          if git diff --name-only HEAD^ HEAD | grep -q "^backend/"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get frontend version
+        id: frontend
+        run: |
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if frontend files changed
+          if git diff --name-only HEAD^ HEAD | grep -q "^frontend/"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-backend:
+    needs: check-versions
+    if: needs.check-versions.outputs.backend-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/reporting-agent-backend
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.check-versions.outputs.backend-version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.check-versions.outputs.backend-version }}
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/reporting-agent-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/reporting-agent-backend:buildcache,mode=max
+
+  build-frontend:
+    needs: check-versions
+    if: needs.check-versions.outputs.frontend-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/reporting-agent-frontend
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.check-versions.outputs.frontend-version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.check-versions.outputs.frontend-version }}
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/reporting-agent-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/reporting-agent-frontend:buildcache,mode=max
