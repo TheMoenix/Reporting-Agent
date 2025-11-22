@@ -1,0 +1,9 @@
+subscription threadProgress($threadId: String!) {
+  threadProgress(threadId: $threadId) {
+    threadId
+    step
+    message
+    note
+    percentage
+  }
+}

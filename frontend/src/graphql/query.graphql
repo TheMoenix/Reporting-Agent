@@ -1,0 +1,151 @@
+query getUserThreads {
+  getUserThreads {
+    _id
+    threadId
+    topic
+    connectionId
+    createdAt
+    updatedAt
+  }
+}
+
+query getThread($threadId: String!) {
+  getThread(threadId: $threadId) {
+    _id
+    threadId
+    locale
+    timezone
+    topic
+    connectionId
+    interactions {
+      _id
+      userQuery
+      response
+      execution_status
+      execution_time_ms
+      visualization {
+        _id
+        shouldVisualize
+        reasoning
+        graphs
+        createdAt
+        updatedAt
+      }
+      sqlResult {
+        sql
+        rows
+        row_count
+        status
+        error_message
+        execution_time_ms
+      }
+      messages {
+        role
+        content
+        step
+        timestamp
+        metadata
+        name
+      }
+      user_rating
+      user_feedback
+      feedback_timestamp
+      downloadableFiles {
+        filename
+        url
+        timestamp
+      }
+      createdAt
+      updatedAt
+    }
+    createdAt
+    updatedAt
+  }
+}
+
+query getConnections {
+  connections {
+    _id
+    name
+    description
+    type
+    host
+    port
+    database
+    username
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+
+query getConnection($id: ID!) {
+  connection(id: $id) {
+    _id
+    name
+    description
+    type
+    host
+    port
+    database
+    username
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+
+query testConnection($id: ID!) {
+  testConnection(id: $id) {
+    success
+    message
+    error
+  }
+}
+
+query getAvailableConnectionTypes {
+  availableConnectionTypes
+}
+
+query getAllSqlExamples {
+  getAllSqlExamples {
+    id
+    question
+    sql
+    category
+    description
+    database_schema
+    is_verified
+    quality_score
+    success_count
+    usage_count
+    created_at
+  }
+}
+
+query searchSqlExamples($query: String!, $limit: Float) {
+  searchSqlExamples(query: $query, limit: $limit) {
+    id
+    question
+    sql
+    category
+    description
+    database_schema
+    is_verified
+    quality_score
+    similarity_score
+    success_count
+    usage_count
+    created_at
+  }
+}
+
+query getAvailableLLMs {
+  getAvailableLLMs {
+    id
+    name
+    provider
+    model
+    isAvailable
+  }
+}

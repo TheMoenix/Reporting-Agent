@@ -1,0 +1,10 @@
+{
+  "title": "Reporting AI",
+  "menu.dashboard": "لوحة التحكم",
+  "menu.new_query": "استعلام جديد",
+  "new_request": "طلب جديد",
+  "connections": "الاتصالات",
+  "history": "التاريخ",
+  "error.403": "ليس لديك الصلاحية للوصول إلى هذه الصفحة",
+  "button.go_home": "الذهاب إلى الصفحة الرئيسية"
+}

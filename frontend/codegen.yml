@@ -1,0 +1,36 @@
+overwrite: true
+schema: "http://localhost:4000/graphql"
+documents: "src/graphql/**/*.graphql"
+
+generates:
+  # Get schemas from server
+  src/graphql/generated/schemas.tsx:
+    plugins:
+      - "typescript"
+
+  # Create operations based on queries
+  src/graphql/generated/operations.tsx:
+    preset: import-types
+    presetConfig:
+      typesPath: ./schemas
+    plugins:
+      - "typescript-operations"
+
+  # 1. Export GraphQL documents
+  # 2. React interface
+  src/graphql/generated/hooks.tsx:
+    preset: import-types
+    presetConfig:
+      typesPath: ./operations
+    plugins:
+      - "typescript-react-apollo"
+    config:
+      # Optionals
+      withHOC: false
+      withComponent: false
+      withHooks: true
+
+  # Introspection
+  src/graphql/generated/graphql.schema.json:
+    plugins:
+      - "introspection"

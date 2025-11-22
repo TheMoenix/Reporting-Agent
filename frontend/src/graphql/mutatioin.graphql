@@ -1,0 +1,81 @@
+mutation processQuery($input: QueryRequestInput!) {
+  processQuery(input: $input) {
+    threadId
+    connectionId
+  }
+}
+
+mutation rateQueryResult(
+  $threadId: String!
+  $interactionId: String!
+  $isHelpful: Boolean!
+  $feedback: String
+) {
+  rateQueryResult(
+    threadId: $threadId
+    interactionId: $interactionId
+    isHelpful: $isHelpful
+    feedback: $feedback
+  )
+}
+
+mutation createConnection($createConnectionInput: CreateConnectionDto!) {
+  createConnection(createConnectionInput: $createConnectionInput) {
+    _id
+    name
+    description
+    type
+    host
+    port
+    database
+    username
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+
+mutation updateConnection(
+  $id: ID!
+  $updateConnectionInput: UpdateConnectionDto!
+) {
+  updateConnection(id: $id, updateConnectionInput: $updateConnectionInput) {
+    _id
+    name
+    description
+    type
+    host
+    port
+    database
+    username
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+
+mutation deleteConnection($id: ID!) {
+  deleteConnection(id: $id)
+}
+
+mutation addSqlExample(
+  $question: String!
+  $sql: String!
+  $category: String
+  $description: String
+  $databaseSchema: String
+) {
+  addSqlExample(
+    question: $question
+    sql: $sql
+    category: $category
+    description: $description
+    databaseSchema: $databaseSchema
+  )
+}
+
+mutation exportToExcel($interactionId: String!) {
+  exportToExcel(interactionId: $interactionId) {
+    url
+  }
+}

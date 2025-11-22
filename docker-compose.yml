@@ -1,0 +1,196 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    platform: linux/amd64
+    container_name: reporting_agent_db
+    pull_policy: if_not_present
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - reporting_agent_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    platform: linux/amd64
+    container_name: reporting_agent_redis
+    hostname: redis
+    pull_policy: if_not_present
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - reporting_agent_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Database
+  mongo:
+    image: mongo:latest
+    platform: linux/arm64/v8
+    container_name: reporting_agent_mongo
+    restart: always
+    pull_policy: if_not_present
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-test}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-test}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - reporting_agent_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ClickHouse Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    platform: linux/amd64
+    container_name: reporting_agent_clickhouse
+    ports:
+      - "8123:8123" # HTTP
+      - "9000:9000" # Native TCP
+    restart: always
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-dev}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-dev}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - ch_data:/var/lib/clickhouse
+      - ch_logs:/var/log/clickhouse-server
+    networks:
+      - reporting_agent_network
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # # Backend Service (NestJS)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reporting_agent_backend
+    ports:
+      - "4000:4000"
+    restart: always
+    environment:
+      # Application
+      NODE_ENV: ${NODE_ENV:-development}
+
+      # Checkpoint PostgreSQL (for LangGraph)
+      ENABLE_CHECKPOINTING: ${ENABLE_CHECKPOINTING:-true}
+      CHECKPOINT_PG_HOST: ${CHECKPOINT_PG_HOST:-db}
+      CHECKPOINT_PG_PORT: ${CHECKPOINT_PG_PORT:-5432}
+      CHECKPOINT_PG_USER: ${CHECKPOINT_PG_USER:-postgres}
+      CHECKPOINT_PG_PASSWORD: ${CHECKPOINT_PG_PASSWORD:-postgres}
+      CHECKPOINT_PG_DATABASE: ${CHECKPOINT_PG_DATABASE:-postgres}
+
+      # ClickHouse
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-dev}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-dev}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-sql_examples}
+
+      # MongoDB
+      MONGO_URL: ${MONGO_URL:-mongodb://test:test@mongo:27017}
+      MONGO_AUTH_SOURCE: ${MONGO_AUTH_SOURCE:-admin}
+
+      # Redis
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_TTL: ${REDIS_TTL:-3600}
+
+      # Deployment
+      DEPLOYMENT_NAME: ${DEPLOYMENT_NAME:-reporting-agent}
+
+      # AI Services
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+
+      # AWS S3 (Optional - for file exports)
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_S3_REQUEST_TIMEOUT: ${AWS_S3_REQUEST_TIMEOUT:-60000}
+      AWS_S3_CONNECTION_TIMEOUT: ${AWS_S3_CONNECTION_TIMEOUT:-5000}
+      AWS_S3_MAX_RETRIES: ${AWS_S3_MAX_RETRIES:-3}
+
+      # LangSmith
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-reporting-agent}
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-true}
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      clickhouse:
+        condition: service_started
+    networks:
+      - reporting_agent_network
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # # Frontend Service (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reporting_agent_frontend
+    ports:
+      - "3000:80"
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - reporting_agent_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  reporting_agent_network:
+    driver: bridge
+
+volumes:
+  db-data:
+  mongo-data:
+  ch_data:
+  ch_logs:

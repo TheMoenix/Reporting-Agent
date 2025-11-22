@@ -1,0 +1,10 @@
+{
+  "title": "Reporting Agent",
+  "menu.dashboard": "Dashboard",
+  "menu.new_query": "New Query",
+  "new_request": "New Request",
+  "connections": "Connections",
+  "history": "History",
+  "error.403": "Sorry, you are not authorized to access this page",
+  "button.go_home": "Go to Home"
+}
