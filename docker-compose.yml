@@ -89,9 +89,11 @@ services:
 
   # # Backend Service (NestJS)
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: moenix/reporting-agent-backend:latest
+    platform: linux/amd64
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
     container_name: reporting_agent_backend
     ports:
       - "4000:4000"
@@ -168,9 +170,11 @@ services:
 
   # # Frontend Service (React)
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: moenix/reporting-agent-frontend:latest
+    platform: linux/amd64
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile
     container_name: reporting_agent_frontend
     ports:
       - "3000:80"
