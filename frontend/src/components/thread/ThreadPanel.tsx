@@ -14,6 +14,8 @@ import {
   RobotOutlined,
   BulbOutlined,
   SettingOutlined,
+  ExclamationOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import MessageBubble from "./MessageBubble";
 import ThreadInput from "./ThreadInput";
@@ -109,18 +111,28 @@ function ThreadPanel({
           <Space>
             <Button
               type="text"
-              icon={<SettingOutlined />}
-              onClick={() => setConfigModalVisible(true)}
-            >
-              Config
-            </Button>
-            <Button
-              type="text"
               icon={<BulbOutlined />}
               onClick={() => setTipsModalVisible(true)}
             >
               Tips
             </Button>
+            <Badge
+              count={
+                !selectedConnectionId || !selectedLlmProvider ? (
+                  <ExclamationCircleOutlined style={{ color: "#f5222d" }} />
+                ) : (
+                  0
+                )
+              }
+            >
+              <Button
+                type="text"
+                icon={<SettingOutlined />}
+                onClick={() => setConfigModalVisible(true)}
+              >
+                Config
+              </Button>
+            </Badge>
           </Space>
         </Flex>
       </Card>
